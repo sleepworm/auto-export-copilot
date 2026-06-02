@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await analyzeMessage(text)
-  const msg = addMessage(
+  const msg = await addMessage(
     senderId ?? 'manual_test',
     senderName ?? 'Test User',
     text,

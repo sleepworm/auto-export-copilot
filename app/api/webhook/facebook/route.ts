@@ -51,7 +51,7 @@ async function processEntries(entries: FacebookEntry[]) {
 
       try {
         const result = await analyzeMessage(text)
-        addMessage(
+        await addMessage(
           senderId,
           `User ${senderId.slice(-4)}`,
           text,

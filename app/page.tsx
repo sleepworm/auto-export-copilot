@@ -55,13 +55,24 @@ export default function InboxPage() {
     setSelected(null)
   }
 
-  // Load from localStorage on mount
+  // On mount: show localStorage instantly, then sync from KV
   useEffect(() => {
     const stored = loadFromStorage()
     if (stored.length > 0) {
       setMessages(stored)
       setSelected(stored[0])
     }
+    // Sync from server (KV) — overwrites local cache with authoritative data
+    fetch('/api/messages')
+      .then((r) => r.json())
+      .then((data: DemoMessage[]) => {
+        if (data.length > 0) {
+          setMessages(data)
+          setSelected(data[0])
+          saveToStorage(data)
+        }
+      })
+      .catch(() => {/* stay on localStorage */})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When switching to a new message, pre-fill Chinese draft from suggestedReplyZh

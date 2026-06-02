@@ -1,3 +1,4 @@
+import { kv } from '@vercel/kv'
 import { v4 as uuidv4 } from 'uuid'
 
 export type DemoMessage = {
@@ -18,22 +19,10 @@ export type DemoMessage = {
   sent: boolean
 }
 
+const KV_KEY = 'aec:messages'
 const MAX_MESSAGES = 50
 
-// global 保证 serverless 热重载时不丢失（冷启动仍会丢失）
-declare global {
-  // eslint-disable-next-line no-var
-  var __messageStore: DemoMessage[] | undefined
-}
-
-function getStore(): DemoMessage[] {
-  if (!global.__messageStore) {
-    global.__messageStore = []
-  }
-  return global.__messageStore
-}
-
-export function addMessage(
+export async function addMessage(
   senderId: string,
   senderName: string,
   originalText: string,
@@ -41,8 +30,7 @@ export function addMessage(
   translatedZh: string,
   suggestedReply: string,
   suggestedReplyZh: string
-): DemoMessage {
-  const store = getStore()
+): Promise<DemoMessage> {
   const msg: DemoMessage = {
     id: uuidv4(),
     senderId,
@@ -60,18 +48,23 @@ export function addMessage(
     createdAt: new Date().toISOString(),
     sent: false,
   }
-  store.unshift(msg)
-  if (store.length > MAX_MESSAGES) store.splice(MAX_MESSAGES)
+
+  const existing = await getMessages()
+  const updated = [msg, ...existing].slice(0, MAX_MESSAGES)
+  await kv.set(KV_KEY, updated)
   return msg
 }
 
-export function getMessages(): DemoMessage[] {
-  return getStore()
+export async function getMessages(): Promise<DemoMessage[]> {
+  const data = await kv.get<DemoMessage[]>(KV_KEY)
+  return data ?? []
 }
 
-export function markSent(id: string): boolean {
-  const msg = getStore().find((m) => m.id === id)
-  if (!msg) return false
-  msg.sent = true
+export async function markSent(id: string): Promise<boolean> {
+  const messages = await getMessages()
+  const idx = messages.findIndex((m) => m.id === id)
+  if (idx === -1) return false
+  messages[idx].sent = true
+  await kv.set(KV_KEY, messages)
   return true
 }
