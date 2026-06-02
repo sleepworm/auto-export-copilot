@@ -9,7 +9,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing recipientId or message' }, { status: 400 })
   }
 
-  await sendMessage(recipientId, message)
+  // Only send via Messenger if token is configured
+  if (process.env.FACEBOOK_PAGE_ACCESS_TOKEN) {
+    await sendMessage(recipientId, message)
+  }
   if (messageId) await markSent(messageId, message)
 
   return NextResponse.json({ ok: true })
