@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   await sendMessage(recipientId, message)
-  if (messageId) markSent(messageId)
+  if (messageId) await markSent(messageId)
 
   return NextResponse.json({ ok: true })
 }

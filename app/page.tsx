@@ -16,6 +16,8 @@ type DemoMessage = {
   sent: boolean
 }
 
+const STORAGE_KEY = 'aec_messages'
+
 export default function InboxPage() {
   const [messages, setMessages] = useState<DemoMessage[]>([])
   const [selected, setSelected] = useState<DemoMessage | null>(null)
@@ -23,15 +25,14 @@ export default function InboxPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [copied, setCopied] = useState(false)
 
   // Reply composer state
-  const [zhDraft, setZhDraft] = useState('')         // salesperson types Chinese here
-  const [translatedReply, setTranslatedReply] = useState('')  // live-translated to customer language
+  const [zhDraft, setZhDraft] = useState('')
+  const [translatedReply, setTranslatedReply] = useState('')
   const [translating, setTranslating] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const STORAGE_KEY = 'aec_messages'
 
   function loadFromStorage(): DemoMessage[] {
     try {
@@ -50,10 +51,11 @@ export default function InboxPage() {
     }
   }
 
-  function clearStorage() {
+  async function clearStorage() {
     localStorage.removeItem(STORAGE_KEY)
     setMessages([])
     setSelected(null)
+    await fetch('/api/clear-messages', { method: 'DELETE' }).catch(() => {})
   }
 
   // On mount: show localStorage instantly, then sync from KV
@@ -142,8 +144,9 @@ export default function InboxPage() {
   async function handleSend() {
     if (!selected || !translatedReply.trim()) return
     setSending(true)
+    setSendError('')
     try {
-      await fetch('/api/send-message', {
+      const res = await fetch('/api/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,13 +155,19 @@ export default function InboxPage() {
           messageId: selected.id,
         }),
       })
-      // Mark as sent locally
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setSendError(err.error ?? `发送失败 (${res.status})`)
+        return
+      }
       setMessages((prev) => {
         const updated = prev.map((m) => m.id === selected.id ? { ...m, sent: true } : m)
         saveToStorage(updated)
         return updated
       })
       setSelected((prev) => prev ? { ...prev, sent: true } : prev)
+    } catch (e) {
+      setSendError(e instanceof Error ? e.message : '网络错误，请重试')
     } finally {
       setSending(false)
     }
@@ -327,6 +336,9 @@ export default function InboxPage() {
                     {selected.sent ? '✓ 已发送' : sending ? '发送中…' : '发送到 Messenger'}
                   </button>
                 </div>
+                {sendError && (
+                  <p className="text-xs text-red-500">{sendError}</p>
+                )}
               </div>
 
               <div className="text-xs text-gray-400 text-center">
