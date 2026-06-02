@@ -60,11 +60,12 @@ export async function getMessages(): Promise<DemoMessage[]> {
   return data ?? []
 }
 
-export async function markSent(id: string): Promise<boolean> {
+export async function markSent(id: string, sentReply: string): Promise<boolean> {
   const messages = await getMessages()
   const idx = messages.findIndex((m) => m.id === id)
   if (idx === -1) return false
   messages[idx].sent = true
+  messages[idx].suggestedReply = sentReply  // overwrite with what was actually sent
   await kv.set(KV_KEY, messages)
   return true
 }
