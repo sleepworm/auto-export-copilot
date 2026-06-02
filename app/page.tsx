@@ -38,6 +38,8 @@ export default function InboxPage() {
       if (selected) {
         const updated = data.find((m) => m.id === selected.id)
         if (updated) setSelected(updated)
+      } else if (data.length > 0) {
+        setSelected(data[0])
       }
     } catch {
       // silent
