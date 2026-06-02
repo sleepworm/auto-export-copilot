@@ -48,8 +48,6 @@ export default function InboxPage() {
 
   useEffect(() => {
     fetchMessages()
-    const id = setInterval(fetchMessages, 10000)
-    return () => clearInterval(id)
   }, [fetchMessages])
 
   // When switching to a new message, pre-fill Chinese draft from suggestedReplyZh
@@ -142,9 +140,8 @@ export default function InboxPage() {
           <div className="font-semibold text-sm">Auto Export Copilot</div>
           <div className="text-xs text-gray-400">Facebook Messenger · AI Sales Inbox</div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-green-400 inline-block" />
-          <span className="text-xs text-gray-400">实时轮询中</span>
+        <div className="ml-auto">
+          <span className="text-xs text-gray-400">Demo · 本地测试模式</span>
         </div>
       </header>
 
