@@ -30,25 +30,39 @@ export default function InboxPage() {
   const [translating, setTranslating] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchMessages = useCallback(async () => {
-    try {
-      const res = await fetch('/api/messages')
-      const data: DemoMessage[] = await res.json()
-      setMessages(data)
-      if (selected) {
-        const updated = data.find((m) => m.id === selected.id)
-        if (updated) setSelected(updated)
-      } else if (data.length > 0) {
-        setSelected(data[0])
-      }
-    } catch {
-      // silent
-    }
-  }, [selected])
+  const STORAGE_KEY = 'aec_messages'
 
+  function loadFromStorage(): DemoMessage[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      return raw ? (JSON.parse(raw) as DemoMessage[]) : []
+    } catch {
+      return []
+    }
+  }
+
+  function saveToStorage(msgs: DemoMessage[]) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs))
+    } catch {
+      // storage full or unavailable
+    }
+  }
+
+  function clearStorage() {
+    localStorage.removeItem(STORAGE_KEY)
+    setMessages([])
+    setSelected(null)
+  }
+
+  // Load from localStorage on mount
   useEffect(() => {
-    fetchMessages()
-  }, [fetchMessages])
+    const stored = loadFromStorage()
+    if (stored.length > 0) {
+      setMessages(stored)
+      setSelected(stored[0])
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // When switching to a new message, pre-fill Chinese draft from suggestedReplyZh
   useEffect(() => {
@@ -93,7 +107,11 @@ export default function InboxPage() {
         body: JSON.stringify({ text: testInput }),
       })
       const msg: DemoMessage = await res.json()
-      setMessages((prev) => [msg, ...prev])
+      setMessages((prev) => {
+        const updated = [msg, ...prev]
+        saveToStorage(updated)
+        return updated
+      })
       setSelected(msg)
       setTestInput('')
     } finally {
@@ -114,7 +132,13 @@ export default function InboxPage() {
           messageId: selected.id,
         }),
       })
-      await fetchMessages()
+      // Mark as sent locally
+      setMessages((prev) => {
+        const updated = prev.map((m) => m.id === selected.id ? { ...m, sent: true } : m)
+        saveToStorage(updated)
+        return updated
+      })
+      setSelected((prev) => prev ? { ...prev, sent: true } : prev)
     } finally {
       setSending(false)
     }
@@ -169,10 +193,10 @@ export default function InboxPage() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto flex flex-col">
             {messages.length === 0 && (
               <div className="p-4 text-xs text-gray-400 text-center">
-                暂无消息<br />发送 Facebook 消息或手动测试
+                暂无消息<br />在上方输入消息测试
               </div>
             )}
             {messages.map((msg) => (
@@ -198,6 +222,14 @@ export default function InboxPage() {
                 </div>
               </button>
             ))}
+            {messages.length > 0 && (
+              <button
+                onClick={clearStorage}
+                className="mt-auto mx-3 mb-3 text-xs text-gray-400 hover:text-red-400 transition-colors py-2 border border-dashed border-gray-200 rounded-lg hover:border-red-200"
+              >
+                清除所有记录
+              </button>
+            )}
           </div>
         </aside>
 
