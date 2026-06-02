@@ -21,6 +21,7 @@ export default function InboxPage() {
   const [selected, setSelected] = useState<DemoMessage | null>(null)
   const [testInput, setTestInput] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState('')
   const [sending, setSending] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -111,12 +112,18 @@ export default function InboxPage() {
   async function handleAnalyze() {
     if (!testInput.trim()) return
     setAnalyzing(true)
+    setAnalyzeError('')
     try {
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: testInput }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setAnalyzeError(err.error ?? `请求失败 (${res.status})`)
+        return
+      }
       const msg: DemoMessage = await res.json()
       setMessages((prev) => {
         const updated = [msg, ...prev]
@@ -125,6 +132,8 @@ export default function InboxPage() {
       })
       setSelected(msg)
       setTestInput('')
+    } catch (e) {
+      setAnalyzeError(e instanceof Error ? e.message : '网络错误，请重试')
     } finally {
       setAnalyzing(false)
     }
@@ -202,6 +211,9 @@ export default function InboxPage() {
             >
               {analyzing ? '分析中…' : '分析 (⌘↩)'}
             </button>
+            {analyzeError && (
+              <p className="mt-1.5 text-xs text-red-500 break-all">{analyzeError}</p>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto flex flex-col">
